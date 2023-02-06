@@ -131,7 +131,8 @@ while true {
 		
 		case ".bbmod":
 			var input_buffer = buffer_load(input)
-			var output_name = filename_path(output) + filename_name(output)
+			var output_file_name = filename_name(output)
+			var output_name = filename_path(output) + string_copy(output_file_name, 1, string_length(output_file_name) - 4)
 			
 			// Header
 			var header = buffer_read(input_buffer, buffer_string)
