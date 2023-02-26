@@ -55,9 +55,7 @@ while true {
 					
 					repeat 3 {
 						repeat 3 {
-							tri[@ i] = buffer_read(input_buffer, buffer_f32);
-							show_debug_message(tri[i]);
-							++i
+							tri[@ i++] = buffer_read(input_buffer, buffer_f32)
 						}
 					
 						repeat 5 {
@@ -69,6 +67,8 @@ while true {
 						}
 					}
 					
+					show_debug_message(tri)
+					
 					var x1 = tri[0]
 					var y1 = tri[1]
 					var z1 = tri[2]
@@ -79,6 +79,32 @@ while true {
 					var y3 = tri[7]
 					var z3 = tri[8]
 					
+					// Get the position of B and C relative to A.
+					var ax = x2 - x1
+					var ay = y2 - y1
+					var az = z2 - z1
+					var bx = x3 - x1
+					var by = y3 - y1
+					var bz = z3 - z1
+					
+				    // Get the normal of the triangle by using the normalized cross product.
+					var cpx = ay * bz - az * by
+					var cpy = az * bx - ax * bz
+					var cpz = ax * by - ay * bx
+					var d = point_distance_3d(0, 0, 0, cpx, cpy, cpz)
+					
+					cpx /= d
+					cpy /= d
+					cpz /= d
+					show_debug_message("{0}, {1}, {2} ({3})", cpx, cpy, cpz, d)
+					
+					if is_nan(cpx) or is_nan(cpy) or is_nan(cpz) {
+						show_debug_message("Skipping invalid triangle")
+						buffer_poke(output_buffer, 0, buffer_u32, --triangles)
+						
+						continue
+					}
+					
 					buffer_write(output_buffer, buffer_f32, x1)
 					buffer_write(output_buffer, buffer_f32, y1)
 					buffer_write(output_buffer, buffer_f32, z1)
@@ -88,25 +114,9 @@ while true {
 					buffer_write(output_buffer, buffer_f32, x3)
 					buffer_write(output_buffer, buffer_f32, y3)
 					buffer_write(output_buffer, buffer_f32, z3)
-					
-					// Get the position of B and C relative to A.
-					var bx = x2 - x1
-					var by = y2 - y1
-					var bz = z2 - z1
-					var cx = x3 - x1
-					var cy = y3 - y1
-					var cz = z3 - z1
-					
-				    // Get the normal of the triangle by using the normalized cross product.
-					var cpx = by * cz - cy * bz
-					var cpy = bz * cx - cz * bx
-					var cpz = bx * cy - cx * by
-					var d_inv = 1 / point_distance_3d(0, 0, 0, cpx, cpy, cpz)
-					
-					buffer_write(output_buffer, buffer_f32, cpx * d_inv)
-					buffer_write(output_buffer, buffer_f32, cpy * d_inv)
-					buffer_write(output_buffer, buffer_f32, cpz * d_inv)
-					show_debug_message(string(cpx) + ", " + string(cpy) + ", " + string(cpz))
+					buffer_write(output_buffer, buffer_f32, cpx)
+					buffer_write(output_buffer, buffer_f32, cpy)
+					buffer_write(output_buffer, buffer_f32, cpz)
 				}
 			} else {
 				repeat size {
