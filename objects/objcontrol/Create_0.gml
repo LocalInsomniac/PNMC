@@ -4,7 +4,7 @@ var open_directory = working_directory
 var save_directory = working_directory
 
 while true {
-	var input = get_open_filename_ext("SMF Model File|*.smf|BBMOD Model File|*.bbmod", "", open_directory, "Open a model file to convert");
+	var input = get_open_filename_ext("BBMOD Model File|*.bbmod", "", open_directory, "Open a model file to convert");
 	
 	if input == "" {
 		game_end()
@@ -27,7 +27,7 @@ while true {
 	    --pos
 	}
 	
-	var output = get_save_filename_ext("Project Nightmare Model File|*.mdl|Project Nightmare Collision File|*.col", input_name, save_directory, "Save output")
+	var output = get_save_filename_ext("PNEngine Collision File|*.col", input_name, save_directory, "Save output")
 	
 	if output == "" {
 		game_end()
@@ -38,107 +38,6 @@ while true {
 	save_directory = filename_dir(output)
 	
 	switch filename_ext(input) {
-		case ".smf":
-			var input_buffer = buffer_load(input)
-			var output_buffer = buffer_create(1, buffer_grow, 1)
-			var size = buffer_get_size(input_buffer) * 0.025
-			
-			if filename_ext(output) == ".col" {
-				var triangles = size / 3
-				
-				buffer_write(output_buffer, buffer_u32, triangles)
-				
-				var tri = array_create(9)
-				
-				repeat triangles {
-					var i = 0
-					
-					repeat 3 {
-						repeat 3 {
-							tri[@ i++] = buffer_read(input_buffer, buffer_f32)
-						}
-					
-						repeat 5 {
-							buffer_read(input_buffer, buffer_f32)
-						}
-					
-						repeat 8 {
-							buffer_read(input_buffer, buffer_u8)
-						}
-					}
-					
-					show_debug_message(tri)
-					
-					var x1 = tri[0]
-					var y1 = tri[1]
-					var z1 = tri[2]
-					var x2 = tri[3]
-					var y2 = tri[4]
-					var z2 = tri[5]
-					var x3 = tri[6]
-					var y3 = tri[7]
-					var z3 = tri[8]
-					
-					// Get the position of B and C relative to A.
-					var ax = x2 - x1
-					var ay = y2 - y1
-					var az = z2 - z1
-					var bx = x3 - x1
-					var by = y3 - y1
-					var bz = z3 - z1
-					
-				    // Get the normal of the triangle by using the normalized cross product.
-					var cpx = ay * bz - az * by
-					var cpy = az * bx - ax * bz
-					var cpz = ax * by - ay * bx
-					var d = point_distance_3d(0, 0, 0, cpx, cpy, cpz)
-					
-					cpx /= d
-					cpy /= d
-					cpz /= d
-					show_debug_message("{0}, {1}, {2} ({3})", cpx, cpy, cpz, d)
-					
-					if is_nan(cpx) or is_nan(cpy) or is_nan(cpz) {
-						show_debug_message("Skipping invalid triangle")
-						buffer_poke(output_buffer, 0, buffer_u32, --triangles)
-						
-						continue
-					}
-					
-					buffer_write(output_buffer, buffer_f32, x1)
-					buffer_write(output_buffer, buffer_f32, y1)
-					buffer_write(output_buffer, buffer_f32, z1)
-					buffer_write(output_buffer, buffer_f32, x2)
-					buffer_write(output_buffer, buffer_f32, y2)
-					buffer_write(output_buffer, buffer_f32, z2)
-					buffer_write(output_buffer, buffer_f32, x3)
-					buffer_write(output_buffer, buffer_f32, y3)
-					buffer_write(output_buffer, buffer_f32, z3)
-					buffer_write(output_buffer, buffer_f32, cpx)
-					buffer_write(output_buffer, buffer_f32, cpy)
-					buffer_write(output_buffer, buffer_f32, cpz)
-				}
-			} else {
-				repeat size {
-					repeat 8 {
-						buffer_write(output_buffer, buffer_f32, buffer_read(input_buffer, buffer_f32))
-					}
-				
-					repeat 4 {
-						buffer_write(output_buffer, buffer_u8, 255)
-					}
-				
-					repeat 8 {
-						buffer_write(output_buffer, buffer_u8, buffer_read(input_buffer, buffer_u8))
-					}
-				}
-			}
-			
-			buffer_save(output_buffer, output)
-			buffer_delete(input_buffer)
-			buffer_delete(output_buffer)
-		break
-		
 		case ".bbmod":
 			var input_buffer = buffer_load(input)
 			var output_file_name = filename_name(output)
@@ -177,108 +76,79 @@ while true {
 					buffer_read(input_buffer, buffer_f32)
 				}
 				
-				if not buffer_read(input_buffer, buffer_bool) {
+				var _format = read_bbmod_vertex_format(input_buffer)
+				
+				if not _format.position {
 					show_message(input + " has no vertex positions!")
 					buffer_delete(input_buffer)
 					
 					break
 				}
 				
-				if not buffer_read(input_buffer, buffer_bool) {
-					show_message(input + " has no normals!")
-					buffer_delete(input_buffer)
-					
-					break
-				}
-				
-				var has_uvs = buffer_read(input_buffer, buffer_bool)
-				var has_secondary_uvs = buffer_read(input_buffer, buffer_bool)
-				var has_colors = buffer_read(input_buffer, buffer_bool)
-				var has_tangents = buffer_read(input_buffer, buffer_bool)
-				var has_bones = buffer_read(input_buffer, buffer_bool)
-				var has_ids = buffer_read(input_buffer, buffer_bool)
-				
 				buffer_read(input_buffer, buffer_f32)
 				
-				var vertices = buffer_read(input_buffer, buffer_u32)
+				var _triangles = buffer_read(input_buffer, buffer_u32) div 3
 				var output_buffer = buffer_create(1, buffer_grow, 1)
 				
-				repeat vertices {
-					var _x = buffer_read(input_buffer, buffer_f32)
-					var _y = -buffer_read(input_buffer, buffer_f32)
-					var _z = -buffer_read(input_buffer, buffer_f32)
+				buffer_write(output_buffer, buffer_string, "PNECOL")
+				buffer_write(output_buffer, buffer_u32, _triangles)
+				
+				repeat _triangles {
+					var _v1 = read_bbmod_vertex(input_buffer, _format)
+					var _v2 = read_bbmod_vertex(input_buffer, _format)
+					var _v3 = read_bbmod_vertex(input_buffer, _format)
 					
-					buffer_write(output_buffer, buffer_f32, _x)
-					buffer_write(output_buffer, buffer_f32, _y)
-					buffer_write(output_buffer, buffer_f32, _z)
+					var _tp1 = _v1.position
+					var _tx1 = _tp1[0]
+					var _ty1 = _tp1[1]
+					var _tz1 = _tp1[2]
 					
-					var _nx = buffer_read(input_buffer, buffer_f32)
-					var _ny = -buffer_read(input_buffer, buffer_f32)
-					var _nz = -buffer_read(input_buffer, buffer_f32)
+					var _tp2 = _v2.position
+					var _tx2 = _tp2[0]
+					var _ty2 = _tp2[1]
+					var _tz2 = _tp2[2]
 					
-					buffer_write(output_buffer, buffer_f32, _nx)
-					buffer_write(output_buffer, buffer_f32, _ny)
-					buffer_write(output_buffer, buffer_f32, _nz)
+					var _tp3 = _v3.position
+					var _tx3 = _tp3[0]
+					var _ty3 = _tp3[1]
+					var _tz3 = _tp3[2]
 					
-					if has_uvs {
-						var _u = buffer_read(input_buffer, buffer_f32)
-						var _v = 1 - buffer_read(input_buffer, buffer_f32)
+					// Get the position of B and C relative to A.
+					var _ax = _tx2 - _tx1
+					var _ay = _ty2 - _ty1
+					var _az = _tz2 - _tz1
+					var _bx = _tx3 - _tx1
+					var _by = _ty3 - _ty1
+					var _bz = _tz3 - _tz1
 					
-						buffer_write(output_buffer, buffer_f32, _u)
-						buffer_write(output_buffer, buffer_f32, _v)
-					} else {
-						repeat 2 {
-							buffer_write(output_buffer, buffer_f32, 0)
-						}
-					}
+				    // Get the normal of the triangle by using the normalized cross product.
+					var _cpx = _ay * _bz - _az * _by
+					var _cpy = _az * _bx - _ax * _bz
+					var _cpz = _ax * _by - _ay * _bx
+					var d = 1 / point_distance_3d(0, 0, 0, _cpx, _cpy, _cpz)
 					
-					if has_secondary_uvs {
-						repeat 2 {
-							buffer_read(input_buffer, buffer_f32)
-						}
-					}
+					_cpx *= d
+					_cpy *= d
+					_cpz *= d
 					
-					if has_colors {
-						var _r = buffer_read(input_buffer, buffer_u8)
-						var _g = buffer_read(input_buffer, buffer_u8)
-						var _b = buffer_read(input_buffer, buffer_u8)
-						var _a = buffer_read(input_buffer, buffer_u8)
-						
-						buffer_write(output_buffer, buffer_u8, _r)
-						buffer_write(output_buffer, buffer_u8, _g)
-						buffer_write(output_buffer, buffer_u8, _b)
-						buffer_write(output_buffer, buffer_u8, _a)
-					} else {
-						repeat 4 {
-							buffer_write(output_buffer, buffer_u8, 255)
-						}
-					}
-					
-					if has_tangents {
-						repeat 4 {
-							buffer_read(input_buffer, buffer_f32)
-						}
-					}
-					
-					if has_bones {
-						repeat 8 {
-							buffer_read(input_buffer, buffer_f32)
-						}
-					}
-					
-					if has_ids {
-						buffer_read(input_buffer, buffer_f32)
-					}
-					
-					repeat 8 {
-						buffer_write(output_buffer, buffer_u8, 255)
-					}
+					buffer_write(output_buffer, buffer_f32, _tx1)
+					buffer_write(output_buffer, buffer_f32, _ty1)
+					buffer_write(output_buffer, buffer_f32, _tz1)
+					buffer_write(output_buffer, buffer_f32, _tx2)
+					buffer_write(output_buffer, buffer_f32, _ty2)
+					buffer_write(output_buffer, buffer_f32, _tz2)
+					buffer_write(output_buffer, buffer_f32, _tx3)
+					buffer_write(output_buffer, buffer_f32, _ty3)
+					buffer_write(output_buffer, buffer_f32, _tz3)
+					buffer_write(output_buffer, buffer_f32, _cpx)
+					buffer_write(output_buffer, buffer_f32, _cpy)
+					buffer_write(output_buffer, buffer_f32, _cpz)
 				}
 				
-				var final_output = output_name + "_" + string(material_index) + ".mdl"
+				var _final_output = output_name + "_" + string(material_index) + ".col"
 				
-				show_debug_message(final_output)
-				buffer_save(output_buffer, final_output)
+				show_debug_message(_final_output)
+				buffer_save(output_buffer, _final_output)
 				buffer_delete(output_buffer)
 			}
 			
@@ -289,6 +159,5 @@ while true {
 			game_end()
 			
 			exit
-		break
 	}
 }

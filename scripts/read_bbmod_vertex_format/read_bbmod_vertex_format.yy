@@ -1,0 +1,13 @@
+{
+  "$GMScript":"",
+  "%Name":"read_bbmod_vertex_format",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"read_bbmod_vertex_format",
+  "parent":{
+    "name":"Scripts",
+    "path":"folders/Scripts.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
