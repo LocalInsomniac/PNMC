@@ -1,7 +1,10 @@
 {
-  "FolderOrderSettings": [
+  "FolderOrderSettings":[
+    {"name":"Scripts","order":12,"path":"folders/Scripts.yy",},
     {"name":"Objects","order":9,"path":"folders/Objects.yy",},
     {"name":"Rooms","order":10,"path":"folders/Rooms.yy",},
   ],
-  "ResourceOrderSettings": [],
+  "ResourceOrderSettings":[
+    {"name":"read_bbmod_vertex_format","order":1,"path":"scripts/read_bbmod_vertex_format/read_bbmod_vertex_format.yy",},
+  ],
 }
